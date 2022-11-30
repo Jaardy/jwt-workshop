@@ -43,8 +43,8 @@ const Message = sequelize.define("Message", {
   },
 });
 
-User.hasMany(Message);
-Message.belongsTo(User);
+User.hasMany(Message, {foreignKey: 'userId'});
+Message.belongsTo(User, {foreignKey: 'userId'});
 
 async function main() {
   await sequelize.sync({ force: true });

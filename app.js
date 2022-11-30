@@ -1,49 +1,31 @@
-"use strict";
+"use strict"
+require('dotenv').config()
+const express = require('express')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 
-const express = require("express");
-require("dotenv").config();
+const {authCheck, authScreen} = require('./middleware')
+const {User, Message, sequelize} = require('./db')
 
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-
-const { SIGNING_SECRET, SALT_COUNT } = process.env;
-const { User, sequelize } = require("./db");
-const port = 3000;
+const {SIGNING_SECRET, SALT_COUNT, PORT} = process.env
+const port = PORT || 3000
 
 const app = express();
 
 app.set("json spaces", 2);
-app.use(express.json());
+app.use(express.json())
+app.use(authScreen)
 
-//Checks for Bearer token, if it is there, it verifies the token and sets the user data returned as a property on the request object.  The middleware calls next either way.
-app.use((req, res, next) => {
-  let header = req.get("Authorization");
-  if (!header) {
-    next();
-    return;
-  }
-  let [type, token] = header.split(" "); //Bearer ${hereisthetoken}
-  const user = jwt.verify(token, SIGNING_SECRET);
-  console.log(user);
-  req.user = user;
-  next();
-});
 
-//This is middleware I've inserted at the end-point handlers to demonstrate how I can insert logic after I've hit an end-point path.
-const authCheck = function (req, res, next) {
-  console.log("My Auth Check");
-  next();
-};
 
-app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
-  const hashedPW = await bcrypt.hash(password, Number.parseInt(SALT_COUNT));
-  const user = await User.create({ username, password: hashedPW });
-  const token = jwt.sign({ username, id: user.id }, SIGNING_SECRET);
-  res
-    .status(200)
-    .send({ message: "User has been registered and logged in.", token });
-});
+
+app.post('/register', async (req, res) => {
+    const {username, password} = req.body
+    const hashedPW = await bcrypt.hash(password, Number.parseInt(SALT_COUNT))
+    const user = await User.create({username, password: hashedPW})
+    const token  = jwt.sign({username, id: user.id,}, SIGNING_SECRET)
+    res.status(200).send({message: `User has been registered and logged in.`, token})
+})
 
 app.post("/login", async (req, res, next) => {
   const { username, password } = req.body;
@@ -60,16 +42,54 @@ app.post("/login", async (req, res, next) => {
   }
 });
 
-// Random end point to test
-app.get("/", authCheck, (req, res) => {
-  res.send("Working");
-});
+
+app.get('/messages', authCheck, async (req, res) => {
+  const messages = await Message.findAll()
+  res.status(200).send(messages)
+})
+
+app.get('/messages/:userId', async (req, res) => {
+  const {userId} = req.params
+  const messages = await Message.findAll({where: {userId: userId}})
+  res.status(200).send(messages)
+})
+
+app.post('/messages', authCheck, async (req, res) => {
+  const {message: incomingMessage} = req.body
+  const user = await User.findByPk(req.user.id)
+  const createdMessage = await user.createMessage({message: incomingMessage})
+  res.status(200).send(createdMessage)
+})
+ 
+app.delete('/messages/:messageId', authCheck, async (req, res) => {
+  const {messageId} = req.params
+  
+
+  const message = await Message.findByPk(messageId)
+  if (!message) {
+    res.status(200).send("Message wasn't found.")
+    return
+  }
+  console.log(message?.userId, req.user.id)
+
+  if (message && message?.userId != req.user.id) {
+    res.status(403).send("You are not the owner of this resource.")
+    return
+  }
+  const deletedPost = await Message.destroy({where: {userId: req.user.id, id: messageId}})
+ 
+  res.send({message: "Message was deleted."})
+
+})
 
 app.listen(port, async () => {
-  try {
-    await sequelize.sync({ force: true });
-    console.log(`Listening on port ${port}`);
-  } catch (err) {
-    console.error("Failed to start server:", err);
-  }
-});
+    try {
+      await sequelize.sync({force: true});
+      console.log(`Listening on port ${port}`);
+    } catch (err) {
+      console.error("Failed to start server:", err);
+       
+    }
+  });
+  
+
