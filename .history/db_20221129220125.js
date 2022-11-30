@@ -50,11 +50,9 @@ async function main() {
   await sequelize.sync({ force: true });
 
   const Users = await User.bulkCreate(userData);
-  await Promise.all(messageDataFozzie.map((x) => Users[0].createMessage(x)));
   await Promise.all(
-    messageDataSwedishChef.map((x) => Users[1].createMessage(x))
+    map.messageDataFozzie(async (x) => await User[0].createMessage(x))
   );
-  await Promise.all(messageDataAnimal.map((x) => Users[2].createMessage(x)));
 }
 main();
 

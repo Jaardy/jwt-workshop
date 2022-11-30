@@ -2,12 +2,7 @@
 
 const path = require("path");
 const { Sequelize, DataTypes } = require("sequelize");
-const {
-  userData,
-  messageDataAnimal,
-  messageDataFozzie,
-  messageDataSwedishChef,
-} = require("./seedData");
+const { userData, messageData } = require("./seedData");
 
 const sequelize = new Sequelize({
   dialect: "sqlite",
@@ -41,6 +36,10 @@ const Message = sequelize.define("Message", {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  userId: {
+    type: DataTypes.INTEGER,
+    ke,
+  },
 });
 
 User.hasMany(Message);
@@ -48,13 +47,9 @@ Message.belongsTo(User);
 
 async function main() {
   await sequelize.sync({ force: true });
+  await User.bulkCreate(userData);
 
-  const Users = await User.bulkCreate(userData);
-  await Promise.all(messageDataFozzie.map((x) => Users[0].createMessage(x)));
-  await Promise.all(
-    messageDataSwedishChef.map((x) => Users[1].createMessage(x))
-  );
-  await Promise.all(messageDataAnimal.map((x) => Users[2].createMessage(x)));
+  await Message.bulkCreate(messageData);
 }
 main();
 

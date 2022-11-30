@@ -1,13 +1,8 @@
 "use strict";
 
 const path = require("path");
-const { Sequelize, DataTypes } = require("sequelize");
-const {
-  userData,
-  messageDataAnimal,
-  messageDataFozzie,
-  messageDataSwedishChef,
-} = require("./seedData");
+const { Sequelize, Model, DataTypes, ValidationError } = require("sequelize");
+const { userData, messageData } = require("./seedData");
 
 const sequelize = new Sequelize({
   dialect: "sqlite",
@@ -31,7 +26,7 @@ const User = sequelize.define("User", {
   },
 });
 
-const Message = sequelize.define("Message", {
+const Text = sequelize.define("Message", {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -43,18 +38,14 @@ const Message = sequelize.define("Message", {
   },
 });
 
-User.hasMany(Message);
-Message.belongsTo(User);
+// User.hasMany(Message);
+// Message.belongsTo(User);
 
 async function main() {
-  await sequelize.sync({ force: true });
-
-  const Users = await User.bulkCreate(userData);
-  await Promise.all(messageDataFozzie.map((x) => Users[0].createMessage(x)));
-  await Promise.all(
-    messageDataSwedishChef.map((x) => Users[1].createMessage(x))
-  );
-  await Promise.all(messageDataAnimal.map((x) => Users[2].createMessage(x)));
+  sequelize.sync({ force: true });
+  // await User.bulkCreate(userData);
+  await Text.bulkCreate(messageData);
+  console.log("ping`");
 }
 main();
 
