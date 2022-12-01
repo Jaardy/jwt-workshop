@@ -16,6 +16,7 @@ exports.authScreen = function ( req, res, next) {
     if (!header) {
         next()
         return
+        return
       }
       let [type, token] = header.split(" ");  
     const user = jwt.verify(token, SIGNING_SECRET)

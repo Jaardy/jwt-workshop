@@ -2,21 +2,43 @@
 require('dotenv').config()
 const express = require('express')
 const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
+// const jwt = require('jsonwebtoken')
+const {auth, requiresAuth} = require('express-openid-connect')
+const cookieParser = require('cookie-parser')
 
-const {authCheck, authScreen} = require('./middleware')
+
+// const, authScreen} = require('./middleware')
 const {User, Message, sequelize} = require('./db')
 
 const {SIGNING_SECRET, SALT_COUNT, PORT} = process.env
 const port = PORT || 3000
 
+const config = {
+  authRequired: false,
+  auth0Logout: true,
+  secret: 'a long, randomly-generated string stored in env',
+  baseURL: 'http://localhost:3000',
+  clientID: '3YDRCaVGp6lBKT6xdNYN8Juk3Hc2Nj9B',
+  issuerBaseURL: 'https://dev-zy6e7tp6yqttk7l0.us.auth0.com'
+};
+
 const app = express();
 
 app.set("json spaces", 2);
-app.use(express.json())
-app.use(authScreen)
 
+// app.use(authScreen)
+// auth router attaches /login, /logout, and /callback routes to the baseURL
+app.use(auth(config));
+app.use(express.json(), cookieParser())
+app.use((req, res, next) => {
+  console.log(req.oidc)
+  next()
+})
 
+app.get('/', (req, res, next) => {
+      console.log(JSON.stringify(req.oidc.user))
+      res.send('ok') 
+})
 
 
 app.post('/register', async (req, res) => {
@@ -43,7 +65,7 @@ app.post("/login", async (req, res, next) => {
 });
 
 
-app.get('/messages', authCheck, async (req, res) => {
+app.get('/messages', async (req, res) => {
   const messages = await Message.findAll()
   res.status(200).send(messages)
 })
@@ -54,14 +76,14 @@ app.get('/messages/:userId', async (req, res) => {
   res.status(200).send(messages)
 })
 
-app.post('/messages', authCheck, async (req, res) => {
+app.post('/messages', async (req, res) => {
   const {message: incomingMessage} = req.body
   const user = await User.findByPk(req.user.id)
   const createdMessage = await user.createMessage({message: incomingMessage})
   res.status(200).send(createdMessage)
 })
  
-app.delete('/messages/:messageId', authCheck, async (req, res) => {
+app.delete('/messages/:messageId', async (req, res) => {
   const {messageId} = req.params
   
 
